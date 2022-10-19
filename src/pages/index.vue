@@ -77,6 +77,8 @@ useEventListener('mousemove', (e) => {
 
   drag.data.x += dx
   drag.data.y += dy
+
+  drag.target?.classList.add('is-dragging')
 })
 
 useEventListener('mouseup', () => {
@@ -101,10 +103,19 @@ function onDrop(e: DragEvent) {
 
 <template>
   <div class="flex h-screen">
-    <div class="box-container flex-1" @drop.prevent="onDrop" @dragover.prevent dropzone="true">
+    <div
+      class="box-container flex-1 select-none"
+      @drop.prevent="onDrop"
+      @dragover.prevent
+      dropzone="true"
+      @click.self="drag.data = null"
+    >
       <div
         class="box"
         v-for="item in data.items"
+        :class="{
+          'is-selected': drag.data?.id === item.id,
+        }"
         :style="boxStyle(item)"
         @mousedown="startDrag(item, $event)"
       >
@@ -143,6 +154,10 @@ function onDrop(e: DragEvent) {
   position: relative;
   .box {
     position: absolute;
+
+    &.is-selected {
+      background: rgb(208, 241, 255);
+    }
   }
 }
 
