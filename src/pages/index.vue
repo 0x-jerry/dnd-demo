@@ -2,8 +2,13 @@
 import { reactive } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
+import { createAutoIncrementGenerator } from '@0x-jerry/utils'
+
+const nextId = createAutoIncrementGenerator()
+const itemId = createAutoIncrementGenerator()
 
 interface BoxItem {
+  id: string
   name: string
   x: number
   y: number
@@ -24,18 +29,31 @@ function boxStyle(item: BoxItem) {
   }
 }
 
-function addItem(name: string) {
+function addItem(name?: string, opt?: Partial<Omit<BoxItem, 'name'>>) {
   data.items.push({
-    name,
     x: 0,
     y: 0,
     w: 100,
     h: 40,
+    ...opt,
+    name: name || 'test-' + nextId(),
+    id: itemId(),
   })
+
+  return data.items.at(-1)
 }
 
-addItem('test-1')
-addItem('test-2')
+addItem()
+addItem()
+
+function deleteItem(item?: BoxItem | null) {
+  if (!item) return
+
+  const idx = data.items.findIndex((i) => i.id === item.id)
+  data.items.splice(idx, 1)
+
+  drag.data = null
+}
 
 const drag = reactive({
   isDragging: false,
@@ -65,11 +83,25 @@ useEventListener('mouseup', () => {
   drag.isDragging = false
   drag.target?.classList.remove('is-dragging')
 })
+
+const format = 'text/test-item'
+function onDrag(e: DragEvent) {
+  e.dataTransfer?.setData(format, 'new ' + nextId())
+}
+
+function onDrop(e: DragEvent) {
+  const name = e.dataTransfer?.getData(format)
+  console.log(e)
+  drag.data = addItem(name, {
+    x: e.offsetX,
+    y: e.offsetY,
+  })
+}
 </script>
 
 <template>
   <div class="flex h-screen">
-    <div class="box-container flex-1">
+    <div class="box-container flex-1" @drop.prevent="onDrop" @dragover.prevent dropzone="true">
       <div
         class="box"
         v-for="item in data.items"
@@ -80,9 +112,16 @@ useEventListener('mouseup', () => {
       </div>
     </div>
 
-    <div class="setting-panel">
-      <div class="py-1 border-b border-gray-200 px-4 py-1">设置面板</div>
-      <div v-if="drag.data" class="flex flex-col gap-4 px-4 py-2">
+    <div class="setting-panel flex flex-col gap-2 py-2">
+      <div class="px-4">
+        <div class="box w-fit px-4 py-2 select-none" draggable="true" @dragstart="onDrag">test</div>
+      </div>
+
+      <div class="border-b border-gray-200"></div>
+
+      <div class="py-1 px-4 py-1">设置面板</div>
+      <div class="border-b border-gray-200"></div>
+      <div v-if="drag.data" class="flex flex-col gap-4 px-4">
         <div class="flex">
           <span class="w-80px"> 名称: </span>
           {{ drag.data.name }}
@@ -91,6 +130,9 @@ useEventListener('mouseup', () => {
         <NumberField name="y" v-model="drag.data.y" :min="0" :max="200"></NumberField>
         <NumberField name="width" v-model="drag.data.w"></NumberField>
         <NumberField name="height" v-model="drag.data.h"></NumberField>
+        <div>
+          <button @click="deleteItem(drag.data)">删除</button>
+        </div>
       </div>
     </div>
   </div>
@@ -99,20 +141,22 @@ useEventListener('mouseup', () => {
 <style lang="less">
 .box-container {
   position: relative;
-
   .box {
     position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgb(159, 198, 245);
-    cursor: grab;
-    background: white;
+  }
+}
 
-    &.is-dragging {
-      cursor: grabbing;
-      border-color: rgb(247, 138, 138);
-    }
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(159, 198, 245);
+  cursor: grab;
+  background: white;
+
+  &.is-dragging {
+    cursor: grabbing;
+    border-color: rgb(247, 138, 138);
   }
 }
 
