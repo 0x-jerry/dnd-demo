@@ -6,8 +6,8 @@ import { createAutoIncrementGenerator } from '@0x-jerry/utils'
 import * as THREE from 'three'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
+import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import { Pane } from 'tweakpane'
-import { Text as ThreeText } from 'troika-three-text'
 
 const nextId = createAutoIncrementGenerator()
 const itemId = createAutoIncrementGenerator()
@@ -129,6 +129,8 @@ renderer.shadowMap.enabled = true
 renderer.setClearColor(0xeeeeee)
 renderer.setPixelRatio(window.devicePixelRatio)
 
+const labelRenderer = new CSS2DRenderer()
+
 scene.background = new THREE.Color().setHSL(0.6, 0, 1)
 scene.fog = new THREE.Fog(scene.background, 1, 5000)
 
@@ -173,7 +175,7 @@ scene.add(new THREE.GridHelper(200, 10))
 
 // ------
 
-const cameraControl = new MapControls(camera, renderer.domElement)
+const cameraControl = new MapControls(camera, labelRenderer.domElement)
 
 cameraControl.enableDamping = true // an animation loop is required when either damping or auto-rotation are enabled
 cameraControl.dampingFactor = 0.05
@@ -221,6 +223,7 @@ useRafFn(() => {
 
 function updateRender() {
   renderer.render(scene, camera)
+  labelRenderer.render(scene, camera)
 }
 
 onMounted(() => {
@@ -237,14 +240,22 @@ onMounted(() => {
     0.8810985800426978,
   )
 
-  renderer.setSize(el.clientWidth, el.clientHeight)
   el.appendChild(renderer.domElement)
+  renderer.setSize(el.clientWidth, el.clientHeight)
+
+  {
+    labelRenderer.setSize(el.clientWidth, el.clientHeight)
+    labelRenderer.domElement.style.position = 'absolute'
+    labelRenderer.domElement.style.top = '0px'
+    el.appendChild(labelRenderer.domElement)
+  }
 
   generateCubes()
 })
 
 onUnmounted(() => {
   renderer.domElement.remove()
+  labelRenderer.domElement.remove()
 })
 
 // ---------
@@ -296,21 +307,21 @@ function generateCubes() {
     }
 
     {
-      const text = new ThreeText()
-      scene.add(text)
+      //
+      const earthDiv = document.createElement('div')
+      earthDiv.className = 'label'
+      earthDiv.textContent = item.name
+      earthDiv.style.marginTop = '-1em'
+      earthDiv.style.background = 'rgba(111 111 111 / 20%)'
+      earthDiv.style.padding = '4px'
 
-      // Set properties to configure:
-      text.text = item.name
-      text.fontSize = 3
+      const textLabel = new CSS2DObject(earthDiv)
+      textLabel.position.set(0, 10, 0)
+      cube.add(textLabel)
 
-      text.position.set(cube.position.x, cube.position.y + 10, cube.position.z)
+      textLabel.layers.set(0)
 
-      text.color = 0x9966ff
-
-      // Update the rendering:
-      text.sync()
-
-      meshes.push(text)
+      meshes.push(textLabel)
     }
   })
 }
