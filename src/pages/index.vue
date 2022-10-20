@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 import { Pane } from 'tweakpane'
+import { Text as ThreeText } from 'troika-three-text'
 
 const nextId = createAutoIncrementGenerator()
 const itemId = createAutoIncrementGenerator()
@@ -295,7 +296,21 @@ function generateCubes() {
     }
 
     {
-      // new THREE.TextGeometry(text, parameters)
+      const text = new ThreeText()
+      scene.add(text)
+
+      // Set properties to configure:
+      text.text = item.name
+      text.fontSize = 3
+
+      text.position.set(cube.position.x, cube.position.y + 10, cube.position.z)
+
+      text.color = 0x9966ff
+
+      // Update the rendering:
+      text.sync()
+
+      meshes.push(text)
     }
   })
 }
