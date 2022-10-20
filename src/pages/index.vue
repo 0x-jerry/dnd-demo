@@ -9,7 +9,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 // import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
 import { Pane } from 'tweakpane'
-import { mapRange } from '@tweakpane/core'
+import { mapRange, parseListOptions } from '@tweakpane/core'
 
 const nextId = createAutoIncrementGenerator()
 
@@ -28,13 +28,16 @@ const names = Array(10)
   .map((_, idx) => `name-${idx}`)
 
 const items = useLocalStorage<BoxItem[]>('test-items', [])
+
 const option = useLocalStorage('test-option', {
   cubeColor: '#797979',
   lineColor: '#797979',
+  groundColor: '#8c837b',
   showCoord: true,
   produce: {
     scaleCoord: 0.1,
     scaleSize: 0.1,
+    labelOffset: 10,
   },
   heightRange: {
     min: 2,
@@ -133,8 +136,10 @@ function onDrop(e: DragEvent) {
 // -------- three
 const threeRoot = ref<HTMLElement>()
 // THREE
+const container = new THREE.Object3D()
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
+scene.add(container)
 
 // @ts-ignore
 window.$c = camera
@@ -187,9 +192,18 @@ dirLight.shadow.bias = -0.0001
 
 const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10)
 scene.add(dirLightHelper)
+
 // --- GROUND
 
 scene.add(new THREE.GridHelper(200, 10))
+
+const planeGeometry = new THREE.PlaneGeometry(1000, 1000)
+const planeMaterial = new THREE.MeshLambertMaterial({ color: option.value.groundColor })
+const plane = new THREE.Mesh(planeGeometry, planeMaterial)
+plane.rotation.x = -Math.PI / 2
+plane.receiveShadow = true
+
+scene.add(plane)
 
 // ------
 
@@ -249,13 +263,8 @@ onMounted(() => {
 
   camera.aspect = el.clientWidth / el.clientHeight
   camera.updateProjectionMatrix()
-  camera.position.set(53.6925921660486, 45.77278285958944, 78.47044116579131)
-  camera.quaternion.set(
-    -0.3128537922285524,
-    0.1499018848150306,
-    0.050074075612010736,
-    0.936559937520668,
-  )
+  camera.position.set(439.70056150251946, 205.11216968960736, 394.5127209947809)
+  camera.rotation.set(-0.590696258072125, 0.16343124394760147, 0.10867413681673478, 'XYZ')
 
   el.appendChild(renderer.domElement)
   renderer.setSize(el.clientWidth, el.clientHeight)
@@ -279,7 +288,10 @@ onUnmounted(() => {
 
 const cubeMaterial = new THREE.MeshLambertMaterial({
   color: new THREE.Color(option.value.cubeColor),
+  transparent: true,
+  opacity: 0.85,
 })
+
 const lineMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color(option.value.lineColor) })
 
 const meshes: THREE.Object3D[] = []
@@ -288,17 +300,20 @@ function generateCubes() {
   meshes.forEach((item) => {
     item.removeFromParent()
   })
+
   meshes.splice(0)
 
   const coordScale = option.value.produce.scaleCoord
   const sizeScale = option.value.produce.scaleSize
 
   const { heightRange } = option.value
+
   items.value.forEach((item) => {
     const el = threeRoot.value!
     // const cubeHeight =
-    const len = item.x ** 2 + item.y ** 2
-    const maxLen = el.clientWidth ** 2 + el.clientHeight ** 2
+    const len = Math.sqrt(item.x ** 2 + item.y ** 2)
+    const maxLen = Math.sqrt(el.clientWidth ** 2 + el.clientHeight ** 2)
+
     const h = mapRange(len, 0, maxLen, heightRange.max, heightRange.min)
 
     const size = {
@@ -319,13 +334,15 @@ function generateCubes() {
       cube.position.setX(item.x * coordScale)
       cube.position.setZ(item.y * coordScale)
 
-      scene.add(cube)
+      container.add(cube)
       meshes.push(cube)
     }
 
     const points = []
     points.push(new THREE.Vector3(size.x / 2, size.y, size.z / 2))
-    points.push(new THREE.Vector3(size.x / 2, size.y + 10, size.z / 2))
+    points.push(
+      new THREE.Vector3(size.x / 2, size.y + option.value.produce.labelOffset, size.z / 2),
+    )
 
     const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
 
@@ -339,7 +356,7 @@ function generateCubes() {
     label.textContent = item.name
 
     const textLabel = new CSS3DObject(label)
-    textLabel.position.set(size.x / 2, size.y + 10, size.z / 2)
+    textLabel.position.set(size.x / 2, size.y + option.value.produce.labelOffset, size.z / 2)
 
     line.add(textLabel)
 
@@ -360,6 +377,10 @@ onMounted(() => {
     cubeMaterial.color = new THREE.Color(ev.value)
   })
 
+  pane.addInput(option.value, 'groundColor').on('change', (ev) => {
+    planeMaterial.color = new THREE.Color(ev.value)
+  })
+
   pane.addInput(option.value, 'showCoord').on('change', (ev) => {
     axesHelper.visible = ev.value
   })
@@ -369,17 +390,26 @@ onMounted(() => {
   })
 
   let p = pane.addFolder({ title: 'Produce' })
+
   p.addInput(option.value.produce, 'scaleCoord', { min: 0.1, max: 1 }).on('change', () => {
+    generateCubes()
+  })
+
+  p.addInput(option.value.produce, 'scaleSize', { min: 0.1, max: 1 }).on('change', () => {
+    generateCubes()
+  })
+
+  p.addInput(option.value.produce, 'labelOffset', { min: 10, max: 100 }).on('change', () => {
     generateCubes()
   })
 
   p = pane.addFolder({ title: 'height Range' })
 
-  p.addInput(option.value.heightRange, 'min', { min: 1, max: 10 }).on('change', () => {
+  p.addInput(option.value.heightRange, 'min', { min: 1, max: 50 }).on('change', () => {
     generateCubes()
   })
 
-  p.addInput(option.value.heightRange, 'max', { min: 5, max: 20 }).on('change', () => {
+  p.addInput(option.value.heightRange, 'max', { min: 5, max: 100 }).on('change', () => {
     generateCubes()
   })
 })
@@ -489,9 +519,10 @@ onUnmounted(() => {
 
 <style>
 .label {
-  background: white;
-  border: 1px solid rgb(190, 190, 190);
-  font-size: 2px;
+  background: rgba(0, 0, 0, 0.482);
+  color: white;
+  border: 1px solid rgba(190, 190, 190, 0.435);
+  font-size: 12px;
   padding: 1px;
 }
 </style>
