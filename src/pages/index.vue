@@ -3,6 +3,10 @@ import { reactive } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
 import { createAutoIncrementGenerator } from '@0x-jerry/utils'
+import * as THREE from 'three'
+import { DragControls } from 'three/examples/jsm/controls/DragControls'
+import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 
 const nextId = createAutoIncrementGenerator()
 const itemId = createAutoIncrementGenerator()
@@ -58,7 +62,7 @@ function deleteItem(item?: BoxItem | null) {
 const drag = reactive({
   isDragging: false,
   target: null as null | Element,
-  data: null as null | BoxItem,
+  data: null as null | BoxItem | undefined,
 })
 
 function startDrag(item: BoxItem, e: MouseEvent) {
@@ -99,27 +103,166 @@ function onDrop(e: DragEvent) {
     y: e.offsetY,
   })
 }
+
+// -------- three
+const threeRoot = ref<HTMLElement>()
+// THREE
+const scene = new THREE.Scene()
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
+camera.position.set(50, 40, 10)
+
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.outputEncoding = THREE.sRGBEncoding
+renderer.shadowMap.enabled = true
+renderer.setClearColor(0xeeeeee)
+renderer.setPixelRatio(window.devicePixelRatio)
+
+scene.background = new THREE.Color().setHSL(0.6, 0, 1)
+scene.fog = new THREE.Fog(scene.background, 1, 5000)
+
+// LIGHTS
+
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6)
+hemiLight.color.setHSL(0.6, 1, 0.6)
+hemiLight.groundColor.setHSL(0.095, 1, 0.75)
+hemiLight.position.set(0, 50, 0)
+scene.add(hemiLight)
+
+const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10)
+scene.add(hemiLightHelper)
+
+//
+const dirLight = new THREE.DirectionalLight(0xffffff, 1)
+dirLight.color.setHSL(0.1, 1, 0.95)
+dirLight.position.set(-1, 1.75, 1)
+dirLight.position.multiplyScalar(30)
+scene.add(dirLight)
+
+dirLight.castShadow = true
+
+dirLight.shadow.mapSize.width = 2048
+dirLight.shadow.mapSize.height = 2048
+
+const d = 50
+
+dirLight.shadow.camera.left = -d
+dirLight.shadow.camera.right = d
+dirLight.shadow.camera.top = d
+dirLight.shadow.camera.bottom = -d
+
+dirLight.shadow.camera.far = 3500
+dirLight.shadow.bias = -0.0001
+
+const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10)
+scene.add(dirLightHelper)
+// --- GROUND
+
+scene.add(new THREE.GridHelper(200, 10))
+
+// ------
+
+const geometry = new THREE.BoxGeometry(10, 10, 10)
+const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 })
+const cube = new THREE.Mesh(geometry, material)
+
+cube.castShadow = true
+cube.receiveShadow = true
+
+{
+  // const controls = new DragControls([cube], camera, renderer.domElement)
+}
+
+const cameraControl = new MapControls(camera, renderer.domElement)
+
+cameraControl.enableDamping = true // an animation loop is required when either damping or auto-rotation are enabled
+cameraControl.dampingFactor = 0.05
+
+cameraControl.screenSpacePanning = false
+
+cameraControl.minDistance = 1
+cameraControl.maxDistance = 400
+
+cameraControl.maxPolarAngle = Math.PI / 2
+cameraControl.addEventListener('change', updateRender)
+
+{
+  const control = new TransformControls(camera, renderer.domElement)
+
+  control.addEventListener('dragging-changed', function (event) {
+    cameraControl.enabled = !event.value
+  })
+
+  control.attach(cube)
+  control.addEventListener('change', updateRender)
+
+  scene.add(control)
+}
+
+scene.add(cube)
+
+camera.position.z = 5
+
+const pointer = {
+  x: 0,
+  y: 0,
+}
+
+function pointerPos(event: MouseEvent) {
+  const target = event.target as HTMLElement
+
+  pointer.x = (event.offsetX / target.clientWidth) * 2 - 1
+  pointer.y = -(event.offsetY / target.clientHeight) * 2 + 1
+}
+
+useRafFn(() => {
+  updateRender()
+})
+
+function updateRender() {
+  renderer.render(scene, camera)
+}
+
+onMounted(() => {
+  const el = threeRoot.value
+  if (!el) return
+
+  camera.aspect = el.clientWidth / el.clientHeight
+  camera.updateProjectionMatrix()
+
+  renderer.setSize(el.clientWidth, el.clientHeight)
+  el.appendChild(renderer.domElement)
+})
+
+onUnmounted(() => {
+  renderer.domElement.remove()
+})
+// ---------
 </script>
 
 <template>
   <div class="flex h-screen">
-    <div
-      class="box-container flex-1 select-none"
-      @drop.prevent="onDrop"
-      @dragover.prevent
-      dropzone="true"
-      @click.self="drag.data = null"
-    >
+    <div class="flex-1 flex flex-col">
       <div
-        class="box"
-        v-for="item in data.items"
-        :class="{
-          'is-selected': drag.data?.id === item.id,
-        }"
-        :style="boxStyle(item)"
-        @mousedown="startDrag(item, $event)"
+        class="box-container flex-1 select-none"
+        @drop.prevent="onDrop"
+        @dragover.prevent
+        dropzone="true"
+        @click.self="drag.data = null"
       >
-        {{ item.name }}
+        <div
+          class="box"
+          v-for="item in data.items"
+          :class="{
+            'is-selected': drag.data?.id === item.id,
+          }"
+          :style="boxStyle(item)"
+          @mousedown="startDrag(item, $event)"
+        >
+          {{ item.name }}
+        </div>
+      </div>
+      <div class="flex-1 border-t border-gray-200" ref="threeRoot" @mousemove="pointerPos">
+        <!--  -->
       </div>
     </div>
 
