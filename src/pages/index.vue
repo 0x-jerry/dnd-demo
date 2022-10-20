@@ -20,6 +20,7 @@ interface BoxItem {
   y: number
   w: number
   h: number
+  z: number
 }
 
 const names = Array(10)
@@ -66,6 +67,7 @@ function addItem(opt?: Partial<Omit<BoxItem, 'name'>>) {
     y: 0,
     w: 100,
     h: 40,
+    z: 5,
     ...opt,
     name: names[0],
     id: uuid(),
@@ -438,8 +440,9 @@ onUnmounted(() => {
         </div>
         <NumberField name="x" v-model="drag.data.x" :min="0" :max="200"></NumberField>
         <NumberField name="y" v-model="drag.data.y" :min="0" :max="200"></NumberField>
-        <NumberField name="width" v-model="drag.data.w"></NumberField>
-        <NumberField name="height" v-model="drag.data.h"></NumberField>
+        <NumberField name="长" v-model="drag.data.h"></NumberField>
+        <NumberField name="宽" v-model="drag.data.w"></NumberField>
+        <!-- <NumberField name="高" v-model="drag.data.z"></NumberField> -->
         <div>
           <button @click="deleteItem(drag.data)">删除</button>
         </div>
