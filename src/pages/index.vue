@@ -13,6 +13,7 @@ const itemId = createAutoIncrementGenerator()
 
 const option = {
   cubeColor: '#797979',
+  lineColor: '#797979',
   produce: {
     scaleCoord: 0.1,
     scaleSize: 0.1,
@@ -247,17 +248,21 @@ onUnmounted(() => {
 
 // ---------
 
-const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
+const cubeMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
+const lineMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color(option.lineColor) })
 
-let cubes: THREE.Mesh<THREE.BoxGeometry, THREE.MeshLambertMaterial>[] = []
+const meshes: THREE.Object3D[] = []
 
 function generateCubes() {
-  cubes.forEach((item) => item.removeFromParent())
+  meshes.forEach((item) => {
+    item.removeFromParent()
+  })
+  meshes.splice(0)
 
   const coordScale = option.produce.scaleCoord
   const sizeScale = option.produce.scaleSize
 
-  cubes = data.items.map((item) => {
+  data.items.forEach((item) => {
     const z = 1 + Math.random() * 2
     const w = item.w * sizeScale
     const h = item.h * sizeScale
@@ -265,16 +270,33 @@ function generateCubes() {
 
     geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(w / 2, z / 2, h / 2))
 
-    const cube = new THREE.Mesh(geometry, material)
+    const cube = new THREE.Mesh(geometry, cubeMaterial)
 
-    cube.castShadow = true
-    cube.receiveShadow = true
-    cube.position.setX(item.x * coordScale)
-    cube.position.setZ(item.y * coordScale)
+    {
+      cube.castShadow = true
+      cube.receiveShadow = true
+      cube.position.setX(item.x * coordScale)
+      cube.position.setZ(item.y * coordScale)
 
-    scene.add(cube)
+      scene.add(cube)
+      meshes.push(cube)
+    }
 
-    return cube
+    {
+      const points = []
+      points.push(new THREE.Vector3(cube.position.x, 0, cube.position.z))
+      points.push(new THREE.Vector3(cube.position.x, cube.position.y + 10, cube.position.z))
+
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+
+      const line = new THREE.Line(lineGeometry, lineMaterial)
+      scene.add(line)
+      meshes.push(line)
+    }
+
+    {
+      // new THREE.TextGeometry(text, parameters)
+    }
   })
 }
 
@@ -288,7 +310,7 @@ onMounted(() => {
   pane = new Pane({ title: 'option', container: paneRoot.value })
 
   pane.addInput(option, 'cubeColor').on('change', (ev) => {
-    material.color = new THREE.Color(ev.value)
+    cubeMaterial.color = new THREE.Color(ev.value)
   })
 
   pane.addButton({ title: '生成 3D 图' }).on('click', () => {
