@@ -7,9 +7,14 @@ import * as THREE from 'three'
 import { DragControls } from 'three/examples/jsm/controls/DragControls'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
+import { Pane } from 'tweakpane'
 
 const nextId = createAutoIncrementGenerator()
 const itemId = createAutoIncrementGenerator()
+
+const option = {
+  cubeColor: '#797979',
+}
 
 interface BoxItem {
   id: string
@@ -162,7 +167,7 @@ scene.add(new THREE.GridHelper(200, 10))
 // ------
 
 const geometry = new THREE.BoxGeometry(10, 10, 10)
-const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 })
+const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
 const cube = new THREE.Mesh(geometry, material)
 
 cube.castShadow = true
@@ -237,6 +242,25 @@ onUnmounted(() => {
   renderer.domElement.remove()
 })
 // ---------
+
+// -------- tweak pane
+
+let pane: Pane | null
+
+const paneRoot = ref<HTMLElement>()
+
+onMounted(() => {
+  pane = new Pane({ title: 'option', container: paneRoot.value })
+
+  pane.addInput(option, 'cubeColor').on('change', (ev) => {
+    material.color = new THREE.Color(ev.value)
+  })
+})
+
+onUnmounted(() => {
+  pane?.dispose()
+})
+// ----------
 </script>
 
 <template>
@@ -261,8 +285,9 @@ onUnmounted(() => {
           {{ item.name }}
         </div>
       </div>
-      <div class="flex-1 border-t border-gray-200" ref="threeRoot" @mousemove="pointerPos">
-        <!--  -->
+      <div class="flex-1 border-t border-gray-200 relative">
+        <div class="w-full h-full" ref="threeRoot" @mousemove="pointerPos"></div>
+        <div class="setting absolute top-0 right-0" ref="paneRoot"></div>
       </div>
     </div>
 
