@@ -4,7 +4,6 @@ import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
 import { createAutoIncrementGenerator } from '@0x-jerry/utils'
 import * as THREE from 'three'
-import { DragControls } from 'three/examples/jsm/controls/DragControls'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 import { Pane } from 'tweakpane'
@@ -14,6 +13,10 @@ const itemId = createAutoIncrementGenerator()
 
 const option = {
   cubeColor: '#797979',
+  produce: {
+    scaleCoord: 0.1,
+    scaleSize: 0.1,
+  },
 }
 
 interface BoxItem {
@@ -53,7 +56,10 @@ function addItem(name?: string, opt?: Partial<Omit<BoxItem, 'name'>>) {
 }
 
 addItem()
-addItem()
+addItem(undefined, {
+  x: 10,
+  y: 10,
+})
 
 function deleteItem(item?: BoxItem | null) {
   if (!item) return
@@ -114,7 +120,6 @@ const threeRoot = ref<HTMLElement>()
 // THREE
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
-camera.position.set(50, 40, 10)
 
 const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.outputEncoding = THREE.sRGBEncoding
@@ -166,17 +171,6 @@ scene.add(new THREE.GridHelper(200, 10))
 
 // ------
 
-const geometry = new THREE.BoxGeometry(10, 10, 10)
-const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
-const cube = new THREE.Mesh(geometry, material)
-
-cube.castShadow = true
-cube.receiveShadow = true
-
-{
-  // const controls = new DragControls([cube], camera, renderer.domElement)
-}
-
 const cameraControl = new MapControls(camera, renderer.domElement)
 
 cameraControl.enableDamping = true // an animation loop is required when either damping or auto-rotation are enabled
@@ -191,21 +185,21 @@ cameraControl.maxPolarAngle = Math.PI / 2
 cameraControl.addEventListener('change', updateRender)
 
 {
-  const control = new TransformControls(camera, renderer.domElement)
-
-  control.addEventListener('dragging-changed', function (event) {
-    cameraControl.enabled = !event.value
-  })
-
-  control.attach(cube)
-  control.addEventListener('change', updateRender)
-
-  scene.add(control)
+  // const control = new TransformControls(camera, renderer.domElement)
+  // control.addEventListener('dragging-changed', function (event) {
+  //   cameraControl.enabled = !event.value
+  // })
+  // control.attach(cube)
+  // control.addEventListener('change', updateRender)
+  // scene.add(control)
 }
 
-scene.add(cube)
-
 camera.position.z = 5
+
+{
+  const axesHelper = new THREE.AxesHelper(5000)
+  scene.add(axesHelper)
+}
 
 const pointer = {
   x: 0,
@@ -233,15 +227,56 @@ onMounted(() => {
 
   camera.aspect = el.clientWidth / el.clientHeight
   camera.updateProjectionMatrix()
+  camera.position.set(12.212375655035835, 58.55811591470866, 41.5784838932445)
+  camera.quaternion.set(
+    -0.4725898347770624,
+    -0.0158657797807186,
+    -0.00850983807602517,
+    0.8810985800426978,
+  )
 
   renderer.setSize(el.clientWidth, el.clientHeight)
   el.appendChild(renderer.domElement)
+
+  generateCubes()
 })
 
 onUnmounted(() => {
   renderer.domElement.remove()
 })
+
 // ---------
+
+const material = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
+
+let cubes: THREE.Mesh<THREE.BoxGeometry, THREE.MeshLambertMaterial>[] = []
+
+function generateCubes() {
+  cubes.forEach((item) => item.removeFromParent())
+
+  const coordScale = option.produce.scaleCoord
+  const sizeScale = option.produce.scaleSize
+
+  cubes = data.items.map((item) => {
+    const z = 1 + Math.random() * 2
+    const w = item.w * sizeScale
+    const h = item.h * sizeScale
+    const geometry = new THREE.BoxGeometry(w, z, h)
+
+    geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(w / 2, z / 2, h / 2))
+
+    const cube = new THREE.Mesh(geometry, material)
+
+    cube.castShadow = true
+    cube.receiveShadow = true
+    cube.position.setX(item.x * coordScale)
+    cube.position.setZ(item.y * coordScale)
+
+    scene.add(cube)
+
+    return cube
+  })
+}
 
 // -------- tweak pane
 
@@ -255,6 +290,13 @@ onMounted(() => {
   pane.addInput(option, 'cubeColor').on('change', (ev) => {
     material.color = new THREE.Color(ev.value)
   })
+
+  pane.addButton({ title: '生成 3D 图' }).on('click', () => {
+    generateCubes()
+  })
+
+  let p = pane.addFolder({ title: 'Produce' })
+  p.addInput(option.produce, 'scaleCoord', { min: 0.1, max: 1 })
 })
 
 onUnmounted(() => {
