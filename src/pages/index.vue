@@ -2,15 +2,15 @@
 import { reactive } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
-import { createAutoIncrementGenerator } from '@0x-jerry/utils'
+import { createAutoIncrementGenerator, uuid } from '@0x-jerry/utils'
 import * as THREE from 'three'
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
+// import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
+import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
 import { Pane } from 'tweakpane'
 
 const nextId = createAutoIncrementGenerator()
-const itemId = createAutoIncrementGenerator()
 
 const option = {
   cubeColor: '#797979',
@@ -30,9 +30,7 @@ interface BoxItem {
   h: number
 }
 
-const data = reactive({
-  items: [] as BoxItem[],
-})
+const items = useLocalStorage<BoxItem[]>('test-items', [])
 
 function boxStyle(item: BoxItem) {
   return {
@@ -44,30 +42,24 @@ function boxStyle(item: BoxItem) {
 }
 
 function addItem(name?: string, opt?: Partial<Omit<BoxItem, 'name'>>) {
-  data.items.push({
+  items.value.push({
     x: 0,
     y: 0,
     w: 100,
     h: 40,
     ...opt,
     name: name || 'test-' + nextId(),
-    id: itemId(),
+    id: uuid(),
   })
 
-  return data.items.at(-1)
+  return items.value.at(-1)
 }
-
-addItem()
-addItem(undefined, {
-  x: 10,
-  y: 10,
-})
 
 function deleteItem(item?: BoxItem | null) {
   if (!item) return
 
-  const idx = data.items.findIndex((i) => i.id === item.id)
-  data.items.splice(idx, 1)
+  const idx = items.value.findIndex((i) => i.id === item.id)
+  items.value.splice(idx, 1)
 
   drag.data = null
 }
@@ -123,13 +115,16 @@ const threeRoot = ref<HTMLElement>()
 const scene = new THREE.Scene()
 const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
 
+// @ts-ignore
+window.$c = camera
+
 const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.shadowMap.enabled = true
 renderer.setClearColor(0xeeeeee)
 renderer.setPixelRatio(window.devicePixelRatio)
 
-const labelRenderer = new CSS2DRenderer()
+const labelRenderer = new CSS3DRenderer()
 
 scene.background = new THREE.Color().setHSL(0.6, 0, 1)
 scene.fog = new THREE.Fog(scene.background, 1, 5000)
@@ -232,12 +227,12 @@ onMounted(() => {
 
   camera.aspect = el.clientWidth / el.clientHeight
   camera.updateProjectionMatrix()
-  camera.position.set(12.212375655035835, 58.55811591470866, 41.5784838932445)
+  camera.position.set(37.477935687633206, 43.784026966774135, 63.29909827491451)
   camera.quaternion.set(
-    -0.4725898347770624,
-    -0.0158657797807186,
-    -0.00850983807602517,
-    0.8810985800426978,
+    -0.3128537922285524,
+    0.1499018848150306,
+    0.050074075612010736,
+    0.936559937520668,
   )
 
   el.appendChild(renderer.domElement)
@@ -274,7 +269,7 @@ function generateCubes() {
   const coordScale = option.produce.scaleCoord
   const sizeScale = option.produce.scaleSize
 
-  data.items.forEach((item) => {
+  items.value.forEach((item) => {
     const z = 1 + Math.random() * 2
     const w = item.w * sizeScale
     const h = item.h * sizeScale
@@ -307,19 +302,15 @@ function generateCubes() {
     }
 
     {
-      //
-      const earthDiv = document.createElement('div')
-      earthDiv.className = 'label'
-      earthDiv.textContent = item.name
-      earthDiv.style.marginTop = '-1em'
-      earthDiv.style.background = 'rgba(111 111 111 / 20%)'
-      earthDiv.style.padding = '4px'
+      const label = document.createElement('div')
 
-      const textLabel = new CSS2DObject(earthDiv)
+      label.className = 'label'
+      label.textContent = item.name
+
+      const textLabel = new CSS3DObject(label)
       textLabel.position.set(0, 10, 0)
-      cube.add(textLabel)
 
-      textLabel.layers.set(0)
+      cube.add(textLabel)
 
       meshes.push(textLabel)
     }
@@ -365,7 +356,7 @@ onUnmounted(() => {
       >
         <div
           class="box"
-          v-for="item in data.items"
+          v-for="item in items"
           :class="{
             'is-selected': drag.data?.id === item.id,
           }"
@@ -436,5 +427,14 @@ onUnmounted(() => {
 .setting-panel {
   width: 400px;
   border-left: 1px solid #eee;
+}
+</style>
+
+<style>
+.label {
+  background: white;
+  border: 1px solid rgb(190, 190, 190);
+  font-size: 2px;
+  padding: 1px;
 }
 </style>
