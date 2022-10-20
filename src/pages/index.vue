@@ -4,22 +4,14 @@ import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
 import { createAutoIncrementGenerator, uuid } from '@0x-jerry/utils'
 import * as THREE from 'three'
-import { MapControls } from 'three/examples/jsm/controls/OrbitControls'
+import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 // import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
 import { Pane } from 'tweakpane'
+import { mapRange } from '@tweakpane/core'
 
 const nextId = createAutoIncrementGenerator()
-
-const option = {
-  cubeColor: '#797979',
-  lineColor: '#797979',
-  produce: {
-    scaleCoord: 0.1,
-    scaleSize: 0.1,
-  },
-}
 
 interface BoxItem {
   id: string
@@ -30,8 +22,30 @@ interface BoxItem {
   h: number
 }
 
-const items = useLocalStorage<BoxItem[]>('test-items', [])
+const names = Array(10)
+  .fill(0)
+  .map((_, idx) => `name-${idx}`)
 
+const items = useLocalStorage<BoxItem[]>('test-items', [])
+const option = useLocalStorage('test-option', {
+  cubeColor: '#797979',
+  lineColor: '#797979',
+  showCoord: true,
+  produce: {
+    scaleCoord: 0.1,
+    scaleSize: 0.1,
+  },
+  heightRange: {
+    min: 2,
+    max: 10,
+  },
+})
+
+const refresh = useTimeoutPoll(() => {
+  generateCubes()
+}, 2000)
+
+// -----------
 function boxStyle(item: BoxItem) {
   return {
     left: item.x + 'px',
@@ -41,14 +55,19 @@ function boxStyle(item: BoxItem) {
   }
 }
 
-function addItem(name?: string, opt?: Partial<Omit<BoxItem, 'name'>>) {
+function hasTheSameName(item: BoxItem, idx: number) {
+  return !!items.value.slice(0, idx).find((i) => i.name === item.name)
+}
+// -----------
+
+function addItem(opt?: Partial<Omit<BoxItem, 'name'>>) {
   items.value.push({
     x: 0,
     y: 0,
     w: 100,
     h: 40,
     ...opt,
-    name: name || 'test-' + nextId(),
+    name: names[0],
     id: uuid(),
   })
 
@@ -101,9 +120,9 @@ function onDrag(e: DragEvent) {
 }
 
 function onDrop(e: DragEvent) {
-  const name = e.dataTransfer?.getData(format)
-  console.log(e)
-  drag.data = addItem(name, {
+  const type = e.dataTransfer?.getData(format)
+  console.log(type)
+  drag.data = addItem({
     x: e.offsetX,
     y: e.offsetY,
   })
@@ -117,6 +136,8 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000)
 
 // @ts-ignore
 window.$c = camera
+// @ts-ignore
+window.$s = scene
 
 const renderer = new THREE.WebGLRenderer({ antialias: true })
 renderer.outputEncoding = THREE.sRGBEncoding
@@ -170,7 +191,7 @@ scene.add(new THREE.GridHelper(200, 10))
 
 // ------
 
-const cameraControl = new MapControls(camera, labelRenderer.domElement)
+const cameraControl = new OrbitControls(camera, labelRenderer.domElement)
 
 cameraControl.enableDamping = true // an animation loop is required when either damping or auto-rotation are enabled
 cameraControl.dampingFactor = 0.05
@@ -181,7 +202,6 @@ cameraControl.minDistance = 1
 cameraControl.maxDistance = 400
 
 cameraControl.maxPolarAngle = Math.PI / 2
-cameraControl.addEventListener('change', updateRender)
 
 {
   // const control = new TransformControls(camera, renderer.domElement)
@@ -195,10 +215,8 @@ cameraControl.addEventListener('change', updateRender)
 
 camera.position.z = 5
 
-{
-  const axesHelper = new THREE.AxesHelper(5000)
-  scene.add(axesHelper)
-}
+const axesHelper = new THREE.AxesHelper(5000)
+scene.add(axesHelper)
 
 const pointer = {
   x: 0,
@@ -217,6 +235,7 @@ useRafFn(() => {
 })
 
 function updateRender() {
+  cameraControl.update()
   renderer.render(scene, camera)
   labelRenderer.render(scene, camera)
 }
@@ -224,10 +243,11 @@ function updateRender() {
 onMounted(() => {
   const el = threeRoot.value
   if (!el) return
+  // scene.
 
   camera.aspect = el.clientWidth / el.clientHeight
   camera.updateProjectionMatrix()
-  camera.position.set(37.477935687633206, 43.784026966774135, 63.29909827491451)
+  camera.position.set(53.6925921660486, 45.77278285958944, 78.47044116579131)
   camera.quaternion.set(
     -0.3128537922285524,
     0.1499018848150306,
@@ -245,7 +265,7 @@ onMounted(() => {
     el.appendChild(labelRenderer.domElement)
   }
 
-  generateCubes()
+  refresh.resume()
 })
 
 onUnmounted(() => {
@@ -255,8 +275,10 @@ onUnmounted(() => {
 
 // ---------
 
-const cubeMaterial = new THREE.MeshLambertMaterial({ color: new THREE.Color(option.cubeColor) })
-const lineMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color(option.lineColor) })
+const cubeMaterial = new THREE.MeshLambertMaterial({
+  color: new THREE.Color(option.value.cubeColor),
+})
+const lineMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color(option.value.lineColor) })
 
 const meshes: THREE.Object3D[] = []
 
@@ -266,16 +288,26 @@ function generateCubes() {
   })
   meshes.splice(0)
 
-  const coordScale = option.produce.scaleCoord
-  const sizeScale = option.produce.scaleSize
+  const coordScale = option.value.produce.scaleCoord
+  const sizeScale = option.value.produce.scaleSize
 
+  const { heightRange } = option.value
   items.value.forEach((item) => {
-    const z = 1 + Math.random() * 2
-    const w = item.w * sizeScale
-    const h = item.h * sizeScale
-    const geometry = new THREE.BoxGeometry(w, z, h)
+    const el = threeRoot.value!
+    // const cubeHeight =
+    const len = item.x ** 2 + item.y ** 2
+    const maxLen = el.clientWidth ** 2 + el.clientHeight ** 2
+    const h = mapRange(len, 0, maxLen, heightRange.max, heightRange.min)
 
-    geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(w / 2, z / 2, h / 2))
+    const size = {
+      x: item.w * sizeScale,
+      y: h,
+      z: item.h * sizeScale,
+    }
+
+    const geometry = new THREE.BoxGeometry(size.x, size.y, size.z)
+
+    geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(size.x / 2, size.y / 2, size.z / 2))
 
     const cube = new THREE.Mesh(geometry, cubeMaterial)
 
@@ -289,31 +321,27 @@ function generateCubes() {
       meshes.push(cube)
     }
 
-    {
-      const points = []
-      points.push(new THREE.Vector3(cube.position.x, 0, cube.position.z))
-      points.push(new THREE.Vector3(cube.position.x, cube.position.y + 10, cube.position.z))
+    const points = []
+    points.push(new THREE.Vector3(size.x / 2, size.y, size.z / 2))
+    points.push(new THREE.Vector3(size.x / 2, size.y + 10, size.z / 2))
 
-      const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
 
-      const line = new THREE.Line(lineGeometry, lineMaterial)
-      scene.add(line)
-      meshes.push(line)
-    }
+    const line = new THREE.Line(lineGeometry, lineMaterial)
+    cube.add(line)
+    meshes.push(line)
 
-    {
-      const label = document.createElement('div')
+    const label = document.createElement('div')
 
-      label.className = 'label'
-      label.textContent = item.name
+    label.className = 'label'
+    label.textContent = item.name
 
-      const textLabel = new CSS3DObject(label)
-      textLabel.position.set(0, 10, 0)
+    const textLabel = new CSS3DObject(label)
+    textLabel.position.set(size.x / 2, size.y + 10, size.z / 2)
 
-      cube.add(textLabel)
+    line.add(textLabel)
 
-      meshes.push(textLabel)
-    }
+    meshes.push(textLabel)
   })
 }
 
@@ -326,8 +354,12 @@ const paneRoot = ref<HTMLElement>()
 onMounted(() => {
   pane = new Pane({ title: 'option', container: paneRoot.value })
 
-  pane.addInput(option, 'cubeColor').on('change', (ev) => {
+  pane.addInput(option.value, 'cubeColor').on('change', (ev) => {
     cubeMaterial.color = new THREE.Color(ev.value)
+  })
+
+  pane.addInput(option.value, 'showCoord').on('change', (ev) => {
+    axesHelper.visible = ev.value
   })
 
   pane.addButton({ title: '生成 3D 图' }).on('click', () => {
@@ -335,12 +367,25 @@ onMounted(() => {
   })
 
   let p = pane.addFolder({ title: 'Produce' })
-  p.addInput(option.produce, 'scaleCoord', { min: 0.1, max: 1 })
+  p.addInput(option.value.produce, 'scaleCoord', { min: 0.1, max: 1 }).on('change', () => {
+    generateCubes()
+  })
+
+  p = pane.addFolder({ title: 'height Range' })
+
+  p.addInput(option.value.heightRange, 'min', { min: 1, max: 10 }).on('change', () => {
+    generateCubes()
+  })
+
+  p.addInput(option.value.heightRange, 'max', { min: 5, max: 20 }).on('change', () => {
+    generateCubes()
+  })
 })
 
 onUnmounted(() => {
   pane?.dispose()
 })
+
 // ----------
 </script>
 
@@ -356,9 +401,10 @@ onUnmounted(() => {
       >
         <div
           class="box"
-          v-for="item in items"
+          v-for="(item, idx) in items"
           :class="{
             'is-selected': drag.data?.id === item.id,
+            'is-same': hasTheSameName(item, idx),
           }"
           :style="boxStyle(item)"
           @mousedown="startDrag(item, $event)"
@@ -384,7 +430,11 @@ onUnmounted(() => {
       <div v-if="drag.data" class="flex flex-col gap-4 px-4">
         <div class="flex">
           <span class="w-80px"> 名称: </span>
-          {{ drag.data.name }}
+          <select v-model="drag.data.name">
+            <option v-for="item in names" :value="item">
+              {{ item }}
+            </option>
+          </select>
         </div>
         <NumberField name="x" v-model="drag.data.x" :min="0" :max="200"></NumberField>
         <NumberField name="y" v-model="drag.data.y" :min="0" :max="200"></NumberField>
@@ -406,6 +456,10 @@ onUnmounted(() => {
 
     &.is-selected {
       background: rgb(208, 241, 255);
+    }
+
+    &.is-same {
+      background: rgb(255, 205, 189);
     }
   }
 }
