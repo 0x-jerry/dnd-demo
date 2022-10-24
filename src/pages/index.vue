@@ -2,12 +2,13 @@
 import { reactive } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
-import { createAutoIncrementGenerator, uuid } from '@0x-jerry/utils'
+import { createAutoIncrementGenerator, toArray, uuid } from '@0x-jerry/utils'
 import * as THREE from 'three'
 import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
 // import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
+import { Reflector } from 'three/examples/jsm/objects/Reflector'
 import { Pane } from 'tweakpane'
 import { mapRange, parseListOptions } from '@tweakpane/core'
 
@@ -195,15 +196,33 @@ scene.add(dirLightHelper)
 
 // --- GROUND
 
-scene.add(new THREE.GridHelper(200, 10))
-
 const planeGeometry = new THREE.PlaneGeometry(1000, 1000)
-const planeMaterial = new THREE.MeshLambertMaterial({ color: option.value.groundColor })
+const planeMaterial = new THREE.MeshLambertMaterial({
+  color: option.value.groundColor,
+  opacity: 0.7,
+  transparent: true,
+})
+
 const plane = new THREE.Mesh(planeGeometry, planeMaterial)
 plane.rotation.x = -Math.PI / 2
 plane.receiveShadow = true
 
+const mirror = new Reflector(planeGeometry, {
+  clipBias: 1,
+  // textureWidth: window.innerWidth * window.devicePixelRatio,
+  // textureHeight: window.innerHeight * window.devicePixelRatio,
+  color: 0x889999,
+})
+mirror.rotation.x = -Math.PI / 2
+mirror.position.y = -1
+
+// toArray(plane.material).forEach((item) => {
+//   item.transparent = true
+//   item.opacity = 0.1
+// })
+
 scene.add(plane)
+scene.add(mirror)
 
 // ------
 
