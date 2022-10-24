@@ -9,21 +9,15 @@ import Icons from 'unplugin-icons/vite'
 import IconsResolver from 'unplugin-icons/resolver'
 import Unocss from 'unocss/vite'
 import { VueKitResolver } from '@0x-jerry/vue-kit/resolver'
-import mkcert from 'vite-plugin-mkcert'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development'
-
   return {
     base: './',
     resolve: {
       alias: {
         '@/': `${path.resolve(__dirname, 'src')}/`,
       },
-    },
-    server: {
-      https: isDev,
     },
     plugins: [
       Vue(),
@@ -50,12 +44,6 @@ export default defineConfig(({ mode }) => {
 
       // https://github.com/unocss/unocss
       Unocss(),
-
-      // https://github.com/liuweiGL/vite-plugin-mkcert
-      isDev &&
-        mkcert({
-          source: 'coding',
-        }),
     ],
     test: {
       globals: true,
