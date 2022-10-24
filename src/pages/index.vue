@@ -181,7 +181,7 @@ dirLight.castShadow = true
 dirLight.shadow.mapSize.width = 2048
 dirLight.shadow.mapSize.height = 2048
 
-const d = 50
+const d = 500
 
 dirLight.shadow.camera.left = -d
 dirLight.shadow.camera.right = d
