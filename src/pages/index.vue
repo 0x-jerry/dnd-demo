@@ -2,17 +2,18 @@
 import { reactive, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
-import { createAutoIncrementGenerator, toArray, uuid } from '@0x-jerry/utils'
+import { createAutoIncrementGenerator, uuid } from '@0x-jerry/utils'
 import * as THREE from 'three'
-import { MapControls, OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
-// import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer'
 import { Reflector } from 'three/examples/jsm/objects/Reflector'
 import { Pane } from 'tweakpane'
-import { mapRange, parseListOptions } from '@tweakpane/core'
+import { mapRange } from '@tweakpane/core'
+import { createResourceTracker } from '@/threejs/resource'
 
 const nextId = createAutoIncrementGenerator()
+
+const threeTracker = createResourceTracker()
 
 interface BoxItem {
   id: string
@@ -152,6 +153,8 @@ window.$c = camera
 window.$s = scene
 
 const renderer = new THREE.WebGLRenderer({ antialias: true })
+threeTracker.add(renderer)
+
 renderer.outputEncoding = THREE.sRGBEncoding
 renderer.shadowMap.enabled = true
 renderer.setClearColor(0xeeeeee)
@@ -169,12 +172,15 @@ hemiLight.color.setHSL(0.6, 1, 0.6)
 hemiLight.groundColor.setHSL(0.095, 1, 0.75)
 hemiLight.position.set(0, 50, 0)
 scene.add(hemiLight)
+threeTracker.add(hemiLight)
 
 const hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10)
+threeTracker.add(hemiLightHelper)
 scene.add(hemiLightHelper)
 
 //
 const dirLight = new THREE.DirectionalLight(0xffffff, 1)
+threeTracker.add(dirLight)
 dirLight.color.setHSL(0.1, 1, 0.95)
 dirLight.position.set(-1, 1.75, 1)
 dirLight.position.multiplyScalar(30)
@@ -196,16 +202,19 @@ dirLight.shadow.camera.far = 3500
 dirLight.shadow.bias = -0.0001
 
 const dirLightHelper = new THREE.DirectionalLightHelper(dirLight, 10)
+threeTracker.add(dirLightHelper)
 scene.add(dirLightHelper)
 
 // --- GROUND
 
 const planeGeometry = new THREE.PlaneGeometry(1000, 1000)
+threeTracker.add(planeGeometry)
 const planeMaterial = new THREE.MeshLambertMaterial({
   color: option.value.groundColor,
   opacity: 0.7,
   transparent: true,
 })
+threeTracker.add(planeMaterial)
 
 const plane = new THREE.Mesh(planeGeometry, planeMaterial)
 plane.rotation.x = -Math.PI / 2
@@ -213,17 +222,11 @@ plane.receiveShadow = true
 
 const mirror = new Reflector(planeGeometry, {
   clipBias: 1,
-  // textureWidth: window.innerWidth * window.devicePixelRatio,
-  // textureHeight: window.innerHeight * window.devicePixelRatio,
   color: 0x889999,
 })
+threeTracker.add(mirror)
 mirror.rotation.x = -Math.PI / 2
 mirror.position.y = -1
-
-// toArray(plane.material).forEach((item) => {
-//   item.transparent = true
-//   item.opacity = 0.1
-// })
 
 scene.add(plane)
 scene.add(mirror)
@@ -231,6 +234,7 @@ scene.add(mirror)
 // ------
 
 const cameraControl = new OrbitControls(camera, labelRenderer.domElement)
+threeTracker.add(cameraControl)
 
 cameraControl.enableDamping = true // an animation loop is required when either damping or auto-rotation are enabled
 cameraControl.dampingFactor = 0.05
@@ -243,20 +247,11 @@ cameraControl.maxDistance = 400
 
 cameraControl.maxPolarAngle = Math.PI / 2
 
-{
-  // const control = new TransformControls(camera, renderer.domElement)
-  // control.addEventListener('dragging-changed', function (event) {
-  //   cameraControl.enabled = !event.value
-  // })
-  // control.attach(cube)
-  // control.addEventListener('change', updateRender)
-  // scene.add(control)
-}
-
 camera.position.z = 5
 
 const axesHelper = new THREE.AxesHelper(5000)
 scene.add(axesHelper)
+threeTracker.add(axesHelper)
 
 const pointer = {
   x: 0,
@@ -306,6 +301,9 @@ onMounted(() => {
 onUnmounted(() => {
   renderer.domElement.remove()
   labelRenderer.domElement.remove()
+
+  threeTracker.dispose()
+  console.log(renderer.info)
 })
 
 // ---------
@@ -315,25 +313,30 @@ const cubeMaterial = new THREE.MeshLambertMaterial({
   transparent: true,
   opacity: 0.85,
 })
+threeTracker.add(cubeMaterial)
 
 const lineMaterial = new THREE.LineBasicMaterial({ color: new THREE.Color(option.value.lineColor) })
+threeTracker.add(lineMaterial)
 
-const meshes: THREE.Object3D[] = []
+const cubesTracker = createResourceTracker()
+threeTracker.add(cubesTracker)
 
 function generateCubes() {
-  meshes.forEach((item) => {
-    item.removeFromParent()
-  })
+  cubesTracker.dispose()
 
-  meshes.splice(0)
+  const points = []
+  points.push(new THREE.Vector3(0, 0, 0))
+  points.push(new THREE.Vector3(0, option.value.produce.labelOffset, 0))
 
-  const scale = option.value.produce.scale
+  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+  cubesTracker.add(lineGeometry)
 
   const { heightRange } = option.value
+  const scale = option.value.produce.scale
+  container.clear()
 
   items.value.forEach((item) => {
     const el = threeRoot.value!
-    // const cubeHeight =
     const len = Math.sqrt(item.x ** 2 + item.y ** 2)
     const maxLen = Math.sqrt(el.clientWidth ** 2 + el.clientHeight ** 2)
 
@@ -346,6 +349,7 @@ function generateCubes() {
     }
 
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z)
+    cubesTracker.add(geometry)
 
     geometry.applyMatrix4(new THREE.Matrix4().makeTranslation(size.x / 2, size.y / 2, size.z / 2))
 
@@ -358,22 +362,19 @@ function generateCubes() {
       cube.position.setZ(item.y * scale)
 
       container.add(cube)
-      meshes.push(cube)
     }
 
-    const points = []
-    points.push(new THREE.Vector3(size.x / 2, size.y, size.z / 2))
-    points.push(
-      new THREE.Vector3(size.x / 2, size.y + option.value.produce.labelOffset, size.z / 2),
-    )
-
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
-
     const line = new THREE.Line(lineGeometry, lineMaterial)
+    line.position.set(size.x / 2, size.y, size.z / 2)
     cube.add(line)
-    meshes.push(line)
 
     const label = document.createElement('div')
+
+    cubesTracker.add({
+      dispose() {
+        label.remove()
+      },
+    })
 
     label.className = 'label'
     label.textContent = item.name
@@ -384,11 +385,9 @@ function generateCubes() {
     })
 
     const textLabel = new CSS3DObject(label)
-    textLabel.position.set(size.x / 2, size.y + option.value.produce.labelOffset, size.z / 2)
+    textLabel.position.set(0, option.value.produce.labelOffset, 0)
 
     line.add(textLabel)
-
-    meshes.push(textLabel)
   })
 }
 
@@ -558,5 +557,6 @@ function focusOnCenter() {
   border: 1px solid rgba(190, 190, 190, 0.435);
   font-size: 12px;
   padding: 1px;
+  cursor: pointer;
 }
 </style>
