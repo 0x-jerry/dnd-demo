@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { reactive } from 'vue'
+import { reactive, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import NumberField from '@/components/NumberField.vue'
 import { createAutoIncrementGenerator, toArray, uuid } from '@0x-jerry/utils'
@@ -46,9 +46,12 @@ const option = useLocalStorage('test-option', {
   },
 })
 
-const refresh = useTimeoutPoll(() => {
-  generateCubes()
-}, 2000)
+watch(
+  () => items.value,
+  () => {
+    generateCubes()
+  },
+)
 
 // -----------
 function boxStyle(item: BoxItem) {
@@ -283,7 +286,6 @@ onMounted(() => {
   camera.aspect = el.clientWidth / el.clientHeight
   camera.updateProjectionMatrix()
   camera.position.set(439.70056150251946, 205.11216968960736, 394.5127209947809)
-  camera.rotation.set(-0.590696258072125, 0.16343124394760147, 0.10867413681673478, 'XYZ')
 
   el.appendChild(renderer.domElement)
   renderer.setSize(el.clientWidth, el.clientHeight)
@@ -294,8 +296,7 @@ onMounted(() => {
     labelRenderer.domElement.style.top = '0px'
     el.appendChild(labelRenderer.domElement)
   }
-
-  refresh.resume()
+  generateCubes()
 })
 
 onUnmounted(() => {
@@ -373,6 +374,11 @@ function generateCubes() {
 
     label.className = 'label'
     label.textContent = item.name
+    label.style.cursor = 'pointer'
+
+    label.addEventListener('pointerdown', () => {
+      console.log(item.name)
+    })
 
     const textLabel = new CSS3DObject(label)
     textLabel.position.set(size.x / 2, size.y + option.value.produce.labelOffset, size.z / 2)
@@ -406,6 +412,12 @@ onMounted(() => {
 
   pane.addButton({ title: '生成 3D 图' }).on('click', () => {
     generateCubes()
+  })
+
+  pane.addButton({ title: '相机居中' }).on('click', () => {
+    const c = new THREE.Vector3()
+    new THREE.Box3().setFromObject(container).getCenter(c)
+    cameraControl.target = c
   })
 
   let p = pane.addFolder({ title: 'Produce' })
