@@ -30,21 +30,22 @@ const names = Array(10)
 
 const items = useLocalStorage<BoxItem[]>('test-items', [])
 
-const option = useLocalStorage('test-option', {
+const defaultOption = {
   cubeColor: '#797979',
   lineColor: '#797979',
   groundColor: '#8c837b',
   showCoord: true,
   produce: {
-    scaleCoord: 0.1,
-    scaleSize: 0.1,
+    scale: 1,
     labelOffset: 10,
   },
   heightRange: {
     min: 2,
-    max: 10,
+    max: 20,
   },
-})
+}
+
+const option = useLocalStorage('test-option', defaultOption)
 
 watch(
   () => items.value,
@@ -235,6 +236,7 @@ cameraControl.enableDamping = true // an animation loop is required when either 
 cameraControl.dampingFactor = 0.05
 
 cameraControl.screenSpacePanning = false
+cameraControl.enablePan = false
 
 cameraControl.minDistance = 1
 cameraControl.maxDistance = 400
@@ -325,8 +327,7 @@ function generateCubes() {
 
   meshes.splice(0)
 
-  const coordScale = option.value.produce.scaleCoord
-  const sizeScale = option.value.produce.scaleSize
+  const scale = option.value.produce.scale
 
   const { heightRange } = option.value
 
@@ -339,9 +340,9 @@ function generateCubes() {
     const h = mapRange(len, 0, maxLen, heightRange.max, heightRange.min)
 
     const size = {
-      x: item.w * sizeScale,
+      x: item.w * scale,
       y: h,
-      z: item.h * sizeScale,
+      z: item.h * scale,
     }
 
     const geometry = new THREE.BoxGeometry(size.x, size.y, size.z)
@@ -353,8 +354,8 @@ function generateCubes() {
     {
       cube.castShadow = true
       cube.receiveShadow = true
-      cube.position.setX(item.x * coordScale)
-      cube.position.setZ(item.y * coordScale)
+      cube.position.setX(item.x * scale)
+      cube.position.setZ(item.y * scale)
 
       container.add(cube)
       meshes.push(cube)
@@ -422,11 +423,7 @@ onMounted(() => {
 
   let p = pane.addFolder({ title: 'Produce' })
 
-  p.addInput(option.value.produce, 'scaleCoord', { min: 0.1, max: 1 }).on('change', () => {
-    generateCubes()
-  })
-
-  p.addInput(option.value.produce, 'scaleSize', { min: 0.1, max: 1 }).on('change', () => {
+  p.addInput(option.value.produce, 'scale', { min: 0.1, max: 1 }).on('change', () => {
     generateCubes()
   })
 
