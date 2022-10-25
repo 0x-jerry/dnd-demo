@@ -296,7 +296,9 @@ onMounted(() => {
     labelRenderer.domElement.style.top = '0px'
     el.appendChild(labelRenderer.domElement)
   }
+
   generateCubes()
+  focusOnCenter()
 })
 
 onUnmounted(() => {
@@ -415,9 +417,7 @@ onMounted(() => {
   })
 
   pane.addButton({ title: '相机居中' }).on('click', () => {
-    const c = new THREE.Vector3()
-    new THREE.Box3().setFromObject(container).getCenter(c)
-    cameraControl.target = c
+    focusOnCenter()
   })
 
   let p = pane.addFolder({ title: 'Produce' })
@@ -450,6 +450,12 @@ onUnmounted(() => {
 })
 
 // ----------
+
+function focusOnCenter() {
+  const c = new THREE.Vector3()
+  new THREE.Box3().setFromObject(container).getCenter(c)
+  cameraControl.target = c
+}
 </script>
 
 <template>
