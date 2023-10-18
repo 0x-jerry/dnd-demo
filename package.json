@@ -15,7 +15,7 @@
     "vue-router": "^4.1.2"
   },
   "devDependencies": {
-    "@tweakpane/core": "^1.1.0",
+    "@tweakpane/core": "^2.0.0",
     "@types/node": "^18.0.4",
     "@types/three": "^0.144.0",
     "@vitejs/plugin-vue": "^3.0.0",
