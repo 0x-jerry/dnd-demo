@@ -5,12 +5,12 @@ specifiers:
   '@0x-jerry/vue-kit': ^1.6.4
   '@tweakpane/core': ^1.1.0
   '@types/node': ^18.0.4
-  '@types/three': ^0.144.0
+  '@types/three': ^0.160.0
   '@vitejs/plugin-vue': ^3.0.0
   '@vueuse/core': ^9.3.1
   less: ^4.1.3
   normalize.css: ^8.0.1
-  three: ^0.145.0
+  three: ^0.160.0
   tweakpane: ^3.1.0
   typescript: ^4.7.4
   unocss: 0.45.29
@@ -29,7 +29,7 @@ dependencies:
   '@0x-jerry/vue-kit': registry.npmmirror.com/@0x-jerry/vue-kit/1.6.4
   '@vueuse/core': registry.npmmirror.com/@vueuse/core/9.3.1_vue@3.2.37
   normalize.css: registry.npmmirror.com/normalize.css/8.0.1
-  three: registry.npmmirror.com/three/0.145.0
+  three: registry.npmmirror.com/three/0.160.0
   tweakpane: registry.npmmirror.com/tweakpane/3.1.0
   vue: registry.npmmirror.com/vue/3.2.37
   vue-router: registry.npmmirror.com/vue-router/4.1.2_vue@3.2.37
@@ -37,7 +37,7 @@ dependencies:
 devDependencies:
   '@tweakpane/core': registry.npmmirror.com/@tweakpane/core/1.1.0
   '@types/node': registry.npmmirror.com/@types/node/18.0.4
-  '@types/three': registry.npmmirror.com/@types/three/0.144.0
+  '@types/three': registry.npmmirror.com/@types/three/0.160.0
   '@vitejs/plugin-vue': registry.npmmirror.com/@vitejs/plugin-vue/3.0.0_vite@3.0.0+vue@3.2.37
   less: registry.npmmirror.com/less/4.1.3
   typescript: registry.npmmirror.com/typescript/4.7.4
@@ -461,12 +461,21 @@ packages:
     version: 18.0.4
     dev: true
 
-  registry.npmmirror.com/@types/three/0.144.0:
-    resolution: {integrity: sha512-psvEs6q5rLN50jUYZ3D4pZMfxTbdt3A243blt0my7/NcL6chaCZpHe2csbCtx0SOD9fI/XnF3wnVUAYZGqCSYg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/three/-/three-0.144.0.tgz}
+  registry.npmmirror.com/@types/stats.js/0.17.3:
+    resolution: {integrity: sha512-pXNfAD3KHOdif9EQXZ9deK82HVNaXP5ZIF5RP2QG6OQFNTaY2YIetfrE9t528vEreGQvEPRDDc8muaoYeK0SxQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/stats.js/-/stats.js-0.17.3.tgz}
+    name: '@types/stats.js'
+    version: 0.17.3
+    dev: true
+
+  registry.npmmirror.com/@types/three/0.160.0:
+    resolution: {integrity: sha512-jWlbUBovicUKaOYxzgkLlhkiEQJkhCVvg4W2IYD2trqD2om3VK4DGLpHH5zQHNr7RweZK/5re/4IVhbhvxbV9w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/three/-/three-0.160.0.tgz}
     name: '@types/three'
-    version: 0.144.0
+    version: 0.160.0
     dependencies:
+      '@types/stats.js': registry.npmmirror.com/@types/stats.js/0.17.3
       '@types/webxr': registry.npmmirror.com/@types/webxr/0.5.0
+      fflate: registry.npmmirror.com/fflate/0.6.10
+      meshoptimizer: registry.npmmirror.com/meshoptimizer/0.18.1
     dev: true
 
   registry.npmmirror.com/@types/web-bluetooth/0.0.14:
@@ -1652,6 +1661,12 @@ packages:
       reusify: registry.npmmirror.com/reusify/1.0.4
     dev: true
 
+  registry.npmmirror.com/fflate/0.6.10:
+    resolution: {integrity: sha512-IQrh3lEPM93wVCEczc9SaAOvkmcoQn/G8Bo1e8ZPlY3X3bnAxWaBdvTdvM1hP62iZp0BXWDy4vTAy4fF0+Dlpg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fflate/-/fflate-0.6.10.tgz}
+    name: fflate
+    version: 0.6.10
+    dev: true
+
   registry.npmmirror.com/fill-range/7.0.1:
     resolution: {integrity: sha512-qOo9F+dMUmC2Lcb4BbVvnKJxTPjCm+RRpe4gDuGrzkL7mEVl/djYSu2OdQ2Pa302N4oqkSg9ir6jaLWJ2USVpQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/fill-range/-/fill-range-7.0.1.tgz}
     name: fill-range
@@ -2240,6 +2255,12 @@ packages:
     name: merge2
     version: 1.4.1
     engines: {node: '>= 8'}
+    dev: true
+
+  registry.npmmirror.com/meshoptimizer/0.18.1:
+    resolution: {integrity: sha512-ZhoIoL7TNV4s5B6+rx5mC//fw8/POGyNxS/DZyCJeiZ12ScLfVwRE/GfsxwiTkMYYD5DmK2/JXnEVXqL4rF+Sw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/meshoptimizer/-/meshoptimizer-0.18.1.tgz}
+    name: meshoptimizer
+    version: 0.18.1
     dev: true
 
   registry.npmmirror.com/micromatch/4.0.5:
@@ -2844,10 +2865,10 @@ packages:
     engines: {node: '>= 0.4'}
     dev: true
 
-  registry.npmmirror.com/three/0.145.0:
-    resolution: {integrity: sha512-EKoHQEtEJ4CB6b2BGMBgLZrfwLjXcSUfoI/MiIXUuRpeYsfK5aPWbYhdtIVWOH+x6X0TouldHKHBuc/LAiFzAw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/three/-/three-0.145.0.tgz}
+  registry.npmmirror.com/three/0.160.0:
+    resolution: {integrity: sha512-DLU8lc0zNIPkM7rH5/e1Ks1Z8tWCGRq6g8mPowdDJpw1CFBJMU7UoJjC6PefXW7z//SSl0b2+GCw14LB+uDhng==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/three/-/three-0.160.0.tgz}
     name: three
-    version: 0.145.0
+    version: 0.160.0
     dev: false
 
   registry.npmmirror.com/tinybench/2.3.0:
